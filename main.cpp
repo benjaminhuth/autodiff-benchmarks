@@ -1,6 +1,9 @@
 #include <iostream>
+#include <chrono>
 
-int main(int argc, char **argv) {
-    std::cout << "Hello, world!" << std::endl;
-    return 0;
+#include "test_autodiff_forward.hpp"
+
+int main(int argc, char **argv) 
+{
+    test_autodiff_forward(100,100,10);
 }
