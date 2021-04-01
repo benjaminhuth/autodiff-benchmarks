@@ -1,4 +1,6 @@
-#include "tests.hpp"
+#pragma once
+
+#include "common.hpp"
 
 #include <autodiff/forward.hpp>
 #include <autodiff/forward/eigen.hpp>
@@ -11,7 +13,7 @@ template<modes m> struct autodiff_type {};
 template<> struct autodiff_type<modes::forward> { using type = autodiff::dual; };
 template<> struct autodiff_type<modes::reverse> { using type = autodiff::var; };
 
-namespace 
+namespace detail
 {
     // Helper function to compute reverse jacobian
     template<int Fdim, int Xdim>
@@ -36,28 +38,38 @@ namespace
 
 
     // Actual test function
-    template<modes m>
-    auto test_autodiff(std::size_t input_size, std::size_t output_size, std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
+    template<modes m, std::size_t InputSize, std::size_t OutputSize>
+    auto test_autodiff(std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
     {    
-        using MatrixX = Eigen::Matrix<typename autodiff_type<m>::type, Eigen::Dynamic, Eigen::Dynamic>;
+        using AutodiffType = typename autodiff_type<m>::type;
+        using InVector = Eigen::Matrix<AutodiffType, InputSize, 1>;
+        using InInMatrix = Eigen::Matrix<AutodiffType, InputSize, InputSize>; 
+        using OutInMatrix = Eigen::Matrix<AutodiffType, OutputSize, InputSize>; 
+        using OutVector = Eigen::Matrix<AutodiffType, OutputSize, 1>; 
+        using MatrixX = Eigen::Matrix<AutodiffType, Eigen::Dynamic, Eigen::Dynamic>;
         
         // Random input vector and matrices
-        auto [x, params] = initialize_params<typename autodiff_type<m>::type>(input_size, output_size, n_param_matrices);
-        MatrixX jac;
+        auto [x, params] = initialize_params<AutodiffType, InputSize, OutputSize>(n_param_matrices);
         
-        // run test_function    
+        // Result and jacobian
+        MatrixX jac;
+        OutVector y;
+        
+        // Run test_function    
         auto t0 = std::chrono::high_resolution_clock::now();
         
         if constexpr( m == modes::forward )
         {
-            jac = autodiff::forward::jacobian(test_function<autodiff::VectorXdual, autodiff::MatrixXdual, eigen_matmul_t>, 
-                                            wrt(x), at(x, params, eigen_matmul));
+            jac = autodiff::forward::jacobian([](const auto &x, const auto &params){ return test_function(x, params, EigenMatmul{}); },
+                                              wrt(x), at(x, params), y);
         }
         else
         {
-            auto y = test_function(x, params, eigen_matmul);
+            y = test_function(x, params, EigenMatmul{});
             jac = autodiff_reverse_jacobian(y, x);
         }
+        
+        std::cout << "y = " << y.transpose() << std::endl;
         
         auto t1 = std::chrono::high_resolution_clock::now();
         
@@ -74,12 +86,14 @@ namespace
     }
 }
 
-duration_t test_autodiff_forward(std::size_t input_size, std::size_t output_size, std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
+template<std::size_t InputSize, std::size_t OutputSize>
+duration_t test_autodiff_forward(std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
 {
-    return test_autodiff<modes::forward>(input_size, output_size, n_param_matrices, js);
+    return detail::test_autodiff<modes::forward, InputSize, OutputSize>(n_param_matrices, js);
 }
 
-duration_t test_autodiff_reverse(std::size_t input_size, std::size_t output_size, std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
+template<std::size_t InputSize, std::size_t OutputSize>
+duration_t test_autodiff_reverse(std::size_t n_param_matrices, std::vector<Eigen::MatrixXd> &js)
 {
-    return test_autodiff<modes::reverse>(input_size, output_size, n_param_matrices, js);
+    return detail::test_autodiff<modes::reverse, InputSize, OutputSize>(n_param_matrices, js);
 }

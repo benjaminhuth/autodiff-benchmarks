@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <mcl/mcl_tabular.hpp>
 
-#include "tests.hpp"
+#include "test_adept.hpp"
+#include "test_autodiff.hpp"
+#include "test_adolc.hpp"
 
 /*
  *  Benchmarks autodiff libraries by computing 
@@ -27,16 +29,17 @@
  * 
  */
 
-void test_configuration(std::size_t nm, std::size_t jc, std::size_t jr)
+template<std::size_t JC, std::size_t JR>
+void test_configuration(std::size_t nm)
 {
     std::vector<Eigen::MatrixXd> jacobians;
     
     std::vector<double> test_times_ms = {
-        test_autodiff_forward(jc,jr,nm, jacobians).count() * 1000.,
-        test_autodiff_reverse(jc,jr,nm, jacobians).count() * 1000.,
-        test_adept_forward(jc,jr,nm, jacobians).count() * 1000.,
-        test_adept_reverse(jc,jr,nm, jacobians).count() * 1000.,
-        test_adolc(jc,jr,nm, jacobians).count() * 1000.
+        test_autodiff_forward<JC, JR>(nm, jacobians).count() * 1000.,
+        test_autodiff_reverse<JC, JR>(nm, jacobians).count() * 1000.,
+        test_adept_forward<JC, JR>(nm, jacobians).count() * 1000.,
+        test_adept_reverse<JC, JR>(nm, jacobians).count() * 1000.,
+        test_adolc<JC, JR>(nm, jacobians).count() * 1000.
     };
     
     // Do consistency check
@@ -76,28 +79,28 @@ int main()
     std::size_t num_matrices = 5;
     
     // symmetric jacobian
-    std::size_t jac_rows = 10; 
-    std::size_t jac_cols = 8;
+    constexpr std::size_t JacRowsEq = 10; 
+    constexpr std::size_t JacColsEq = 10;
     
-    std::cout << "\n### TEST ROWS == COLS (" << jac_rows << "x" << jac_cols << ") ###\n" << std::endl;
-    test_configuration(num_matrices, jac_cols, jac_rows);
+    std::cout << "\n### TEST ROWS == COLS (" << JacRowsEq << "x" << JacColsEq << ") ###\n" << std::endl;
+    test_configuration<JacRowsEq, JacColsEq>(num_matrices);
     std::cout << std::endl;
     
     
     // jacobian rows < cols 
-    jac_rows = 1;
-    jac_cols = 10;
+    constexpr std::size_t JacRowsRv = 1; 
+    constexpr std::size_t JacColsRv = 10;
     
-    std::cout << "\n### TEST ROWS < COLS (" << jac_rows << "x" << jac_cols << ") ### (favours reverse?)\n" << std::endl;
-    test_configuration(num_matrices, jac_cols, jac_rows);
+    std::cout << "\n### TEST ROWS < COLS (" << JacRowsRv << "x" << JacColsRv << ") ### (favours reverse?)\n" << std::endl;
+    test_configuration<JacRowsRv, JacColsRv>(num_matrices);
     std::cout << std::endl;
     
     
     // jacobian rows > cols 
-    jac_rows = 10;
-    jac_cols = 1;
+    constexpr std::size_t JacRowsFw = 10; 
+    constexpr std::size_t JacColsFw = 1;
     
-    std::cout << "\n### TEST ROWS > COLS (" << jac_rows << "x" << jac_cols << ") ### (favours forward?)\n" << std::endl;
-    test_configuration(num_matrices, jac_cols, jac_rows);
+    std::cout << "\n### TEST ROWS > COLS (" << JacRowsFw << "x" << JacColsFw << ") ### (favours forward?)\n" << std::endl;
+    test_configuration<JacRowsFw, JacColsFw>(num_matrices);
     std::cout << std::endl;
 }
