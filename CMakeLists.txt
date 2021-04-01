@@ -34,7 +34,7 @@ macro(make_dependency name)
 
     execute_process(
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/${name})
-        
+
     list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR}/deps/${name})
 endmacro()
 
@@ -55,7 +55,7 @@ set_target_properties(adept2 PROPERTIES IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/de
 set_target_properties(adept2 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}/deps/adept2/include)
 
 # Executable #
-set(SOURCES main.cpp)
+set(SOURCES main.cpp test_adept.cpp  test_adolc.cpp  test_autodiff.cpp)
 
 add_executable(autodiff_benchmark ${SOURCES})
 
