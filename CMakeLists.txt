@@ -6,10 +6,6 @@ include(ExternalProject)
 #   set(${CMAKE_BUILD_TYPE} Release)
 # endif()
 
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    message(WARNING "Will compile in '${CMAKE_BUILD_TYPE}' mode. The Performance may be not optimal. Consider compiling in 'Release' mode")
-endif()
-
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 project(autodiff_performance_overview)
@@ -25,98 +21,50 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(BLAS REQUIRED)
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
-# mcl for tablular printing
-set(MCL_ROOT "${CMAKE_BINARY_DIR}/deps/mcl")
-
-ExternalProject_Add(mcl
-    PREFIX ${MCL_ROOT}
-    GIT_REPOSITORY "https://github.com/benjaminhuth/mcl"
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-)
-
-
 #######################
 ## THE AUTODIFF LIBS ##
 #######################
 
-# autodiff
-set(AUTODIFF_ROOT "${CMAKE_BINARY_DIR}/deps/autodiff")
+macro(make_dependency name)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/deps/${name})
 
-ExternalProject_Add(autodiff
-    PREFIX ${AUTODIFF_ROOT}
-    GIT_REPOSITORY "https://github.com/autodiff/autodiff.git"
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/${name}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/deps/${name})
 
-# Adept 2
-set(ADEPT2_ROOT "${CMAKE_BINARY_DIR}/deps/adept2")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/${name})
+        
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR}/deps/${name})
+endmacro()
 
-ExternalProject_Add(adept2
-    PREFIX ${ADEPT2_ROOT}
-    GIT_REPOSITORY "https://github.com/rjhogan/Adept-2.git"
-    BINARY_DIR "${ADEPT2_ROOT}/src/adept2"
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    CONFIGURE_COMMAND autoreconf -i && ./configure --prefix=<INSTALL_DIR> CXXFLAGS=-O3
-    BUILD_COMMAND make -j${JOBS}
-    INSTALL_COMMAND make install
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libadept.a
-)
+# Adol-C #
+make_dependency(adolc)
+add_library(adolc SHARED IMPORTED)
+set_target_properties(adolc PROPERTIES IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/deps/adolc/lib64/libadolc.so)
+set_target_properties(adolc PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}/deps/adolc/include)
 
-add_library(libadept STATIC IMPORTED GLOBAL)
-set_target_properties(libadept PROPERTIES IMPORTED_LOCATION "${ADEPT2_ROOT}/lib/libadept.a")
+# autodiff #
+make_dependency(autodiff)
+find_package(autodiff REQUIRED)
 
-add_dependencies(libadept adept2 BLAS::BLAS OpenMP::OpenMP_CXX)
-
-# ADOL-C
-set(ADOLC_ROOT "${CMAKE_BINARY_DIR}/deps/ADOL-C")
-
-ExternalProject_Add(adolc
-    PREFIX ${ADOLC_ROOT}
-    GIT_REPOSITORY "https://github.com/coin-or/ADOL-C.git"
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    CONFIGURE_COMMAND ${ADOLC_ROOT}/src/adolc/configure --prefix=${ADOLC_ROOT} CXXFLAGS=-O3
-    BUILD_COMMAND make -j${JOBS}
-    INSTALL_COMMAND make install
-)
-
-add_library(libadolc SHARED IMPORTED GLOBAL)
-set_target_properties(libadolc PROPERTIES IMPORTED_LOCATION "${ADOLC_ROOT}/lib64/libadolc.so")
-
-add_dependencies(libadolc adolc)
-
-
-##########################
-## THE ACTUAL BENCHMARK ##
-##########################
-
-# Includes #
-include_directories("${MCL_ROOT}/src/mcl")
-include_directories("${AUTODIFF_ROOT}/src/autodiff/autodiff")
-include_directories("${ADEPT2_ROOT}/include")
-include_directories("${ADOLC_ROOT}/include")
+# adept2 #
+make_dependency(adept2)
+add_library(adept2 STATIC IMPORTED)
+set_target_properties(adept2 PROPERTIES IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/deps/adept2/lib/libadept.a)
+set_target_properties(adept2 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_BINARY_DIR}/deps/adept2/include)
 
 # Executable #
-set(SOURCES main.cpp test_autodiff.cpp test_adept.cpp test_adolc.cpp)
+set(SOURCES main.cpp)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-add_dependencies(${PROJECT_NAME} libadept)
-add_dependencies(${PROJECT_NAME} autodiff)
-add_dependencies(${PROJECT_NAME} mcl)
-add_dependencies(${PROJECT_NAME} libadolc)
+add_executable(autodiff_benchmark ${SOURCES})
 
 # Link #
-target_link_libraries(${PROJECT_NAME} libadept)
-target_link_libraries(${PROJECT_NAME} libadolc)
-target_link_libraries(${PROJECT_NAME} ${BLAS_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} ${OpenMP_CXX_LIBRARIES})
-target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
+target_link_libraries(autodiff_benchmark BLAS::BLAS)
+target_link_libraries(autodiff_benchmark OpenMP::OpenMP_CXX)
+target_link_libraries(autodiff_benchmark Eigen3::Eigen)
+target_link_libraries(autodiff_benchmark autodiff::autodiff)
+target_link_libraries(autodiff_benchmark adolc)
+target_link_libraries(autodiff_benchmark adept2)
+
+
