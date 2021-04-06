@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include <adolc/adolc.h>
 
 #include "common.hpp"

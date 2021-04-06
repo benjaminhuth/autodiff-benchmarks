@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include "common.hpp"
 
 #include <adept_arrays.h>

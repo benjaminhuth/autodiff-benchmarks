@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <vector>
+#include <chrono>
 
 #include <Eigen/Core>
 
