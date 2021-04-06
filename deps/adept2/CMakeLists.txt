@@ -10,7 +10,6 @@ ExternalProject_Add(adept2
     GIT_REPOSITORY "https://github.com/rjhogan/Adept-2.git"
     CONFIGURE_COMMAND autoreconf -i && ./configure --prefix=${CMAKE_BINARY_DIR} CXXFLAGS=-O3
     BUILD_COMMAND make -j16
-    UPDATE_COMMAND make -j16
     INSTALL_COMMAND make install
     BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/lib/libadept.a
 )

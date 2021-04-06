@@ -34,7 +34,7 @@ macro(make_dependency name)
 
     execute_process(
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR}/deps/${name})
-        
+
     list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR}/deps/${name})
 endmacro()
 
